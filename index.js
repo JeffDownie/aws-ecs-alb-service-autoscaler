@@ -8,6 +8,8 @@ const clusterName = process.env.CLUSTER_NAME;
 const serviceName = process.env.SERVICE_NAME;
 const reqPerMinuteMax = process.env.MAX_REQUESTS;
 const reqPerMinuteMin = process.env.MIN_REQUESTS;
+const latencyMax = process.env.MAX_LATENCY;
+const latencyMin = process.env.MIN_LATENCY;
 const minTasks = process.env.MIN_TASKS;
 const maxTasks = process.env.MAX_TASKS;
 const dryRun = process.env.DRY_RUN;
@@ -33,7 +35,9 @@ const run = () => {
         cluster: clusterName,
         service: serviceName,
         reqPerMinuteMax: reqPerMinuteMax,
-        reqPerMinuteMin: reqPerMinuteMin
+        reqPerMinuteMin: reqPerMinuteMin,
+        latencyMax: latencyMax,
+        latencyMin: latencyMin
     }, (err, data) => {
         if(err) return console.error(err);
         const requiredTasks = R.clamp(minTasks, maxTasks, data.required);

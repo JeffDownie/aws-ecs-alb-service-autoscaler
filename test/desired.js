@@ -26,10 +26,15 @@ const mockTargets = (targetGroupArn, loadBalancerArn) => {
         }]});
     });
 };
-const mockStatistics = (loadBalancerMetricValue, stats) => {
+const mockStatistics = (loadBalancerMetricValue, statsCount, statsLatency) => {
+    let numReq = 0;
     AWS.mock('CloudWatch', 'getMetricStatistics', (params, cb) => {
         params.Dimensions.should.be.deepEqual([{Name: 'LoadBalancer', Value:loadBalancerMetricValue}]);
-        cb(null, {Datapoints: stats});
+        if(numReq === 0) {
+            numReq++;
+            return cb(null, {Datapoints: statsCount});
+        }
+        cb(null, {Datapoints: statsLatency || [{Average: 0}]});
     });
 };
 
@@ -109,6 +114,106 @@ it('should work for a varying set of incoming requests', done => {
         data.should.be.deepEqual({
             current: 3,
             required: 4
+        });
+        done();
+    });
+});
+it('should scale down correctly when given latency requirements', done => {
+    mockServices('test-cluster', 'test-service', 3, 'test-target-arn');
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:1}], [{Average: 1}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 3,
+            required: 2
+        });
+        done();
+    });
+});
+it('should scale up correctly when only latency requires it', done => {
+    mockServices('test-cluster', 'test-service', 3, 'test-target-arn');
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:1}], [{Average: 60}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 3,
+            required: 4
+        });
+        done();
+    });
+});
+it('should scale up correctly when only reqNum requires it', done => {
+    mockServices('test-cluster', 'test-service', 1, 'test-target-arn');
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:60}], [{Average: 1}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 1,
+            required: 2
+        });
+        done();
+    });
+});
+it('should not scale down when only latency requires it', done => {
+    mockServices('test-cluster', 'test-service', 1, 'test-target-arn');
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:40}], [{Average: 1}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 1,
+            required: 1
+        });
+        done();
+    });
+});
+it('should not scale down when only numReq requires it', done => {
+    mockServices('test-cluster', 'test-service', 1, 'test-target-arn');
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:1}], [{Average: 40}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 1,
+            required: 1
         });
         done();
     });

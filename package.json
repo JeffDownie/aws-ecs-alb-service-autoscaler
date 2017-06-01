@@ -1,6 +1,6 @@
 {
   "name": "aws-ecs-alb-service-autoscaler",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AWS ECS service for autoscaling ECS services",
   "main": "index.js",
   "scripts": {

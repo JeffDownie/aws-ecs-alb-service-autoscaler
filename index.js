@@ -6,12 +6,12 @@ const desired = require('./lib/desired.js');
 
 const clusterName = process.env.CLUSTER_NAME;
 const serviceName = process.env.SERVICE_NAME;
-const reqPerMinuteMax = process.env.MAX_REQUESTS;
-const reqPerMinuteMin = process.env.MIN_REQUESTS;
-const latencyMax = process.env.MAX_LATENCY;
-const latencyMin = process.env.MIN_LATENCY;
-const minTasks = process.env.MIN_TASKS;
-const maxTasks = process.env.MAX_TASKS;
+const reqPerMinuteMax = parseFloat(process.env.MAX_REQUESTS);
+const reqPerMinuteMin = parseFloat(process.env.MIN_REQUESTS);
+const latencyMax = parseFloat(process.env.MAX_LATENCY);
+const latencyMin = parseFloat(process.env.MIN_LATENCY);
+const minTasks = parseInt(process.env.MIN_TASKS);
+const maxTasks = parseInt(process.env.MAX_TASKS);
 const dryRun = process.env.DRY_RUN;
 
 const setTasks = taskNum => {

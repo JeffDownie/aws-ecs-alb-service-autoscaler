@@ -5,12 +5,13 @@ const desired = require('../lib/desired.js');
 
 const AWS = require('aws-sdk-mock');
 
-const mockServices = (clusterName, serviceName, desiredCount, targetGroupArn) => {
+const mockServices = (clusterName, serviceName, desiredCount, targetGroupArn, runningCount) => {
     AWS.mock('ECS', 'describeServices', (params, cb) => {
         params.cluster.should.be.equal(clusterName);
         params.services.should.be.deepEqual([serviceName]);
         cb(null, {services: [{
             desiredCount: desiredCount,
+            runningCount: runningCount ? runningCount : desiredCount,
             loadBalancers: [{
                 targetGroupArn: targetGroupArn
             }]
@@ -214,6 +215,62 @@ it('should not scale down when only numReq requires it', done => {
         data.should.be.deepEqual({
             current: 1,
             required: 1
+        });
+        done();
+    });
+});
+it('should not scale up when not all tasks are running', done => {
+    mockServices('test-cluster', 'test-service', 3, 'test-target-arn', 2);
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', [{Sum:1}], [{Average: 60}]);
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 50,
+        reqPerMinuteMin: 30,
+        latencyMax: 50,
+        latencyMin: 30
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 3,
+            required: 3
+        });
+        done();
+    });
+});
+it('should not scale down when too many tasks are running', done => {
+    mockServices('test-cluster', 'test-service', 3, 'test-target-arn', 4);
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', R.repeat({Sum: 1.4}, 10));
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 1,
+        reqPerMinuteMin: 0.5
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 3,
+            required: 3
+        });
+        done();
+    });
+});
+it('should not scale down when too few tasks are running', done => {
+    mockServices('test-cluster', 'test-service', 3, 'test-target-arn', 2);
+    mockTargets('test-target-arn', 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-load-balancer/12345abcde');
+    mockStatistics('app/test-load-balancer/12345abcde', R.repeat({Sum: 1.4}, 10));
+    desired({
+        cluster: 'test-cluster',
+        service: 'test-service',
+        reqPerMinuteMax: 1,
+        reqPerMinuteMin: 0.5
+    }, (err, data) => {
+        if(err) return done(err);
+        data.should.be.deepEqual({
+            current: 3,
+            required: 3
         });
         done();
     });

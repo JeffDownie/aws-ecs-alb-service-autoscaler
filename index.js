@@ -13,6 +13,7 @@ const latencyMin = parseFloat(process.env.MIN_LATENCY);
 const minTasks = parseInt(process.env.MIN_TASKS);
 const maxTasks = parseInt(process.env.MAX_TASKS);
 const dryRun = process.env.DRY_RUN;
+let loopsRemaining = process.env.MAX_LOOPS || 20;
 
 const setTasks = taskNum => {
     const AWS = require('aws-sdk');
@@ -31,6 +32,12 @@ const setTasks = taskNum => {
 };
 
 const run = () => {
+    if(loopsRemaining <= 0) {
+        process.exit(0);
+        return;
+    }
+    loopsRemaining--;
+
     desired({
         cluster: clusterName,
         service: serviceName,

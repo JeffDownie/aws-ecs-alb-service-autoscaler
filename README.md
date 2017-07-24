@@ -39,3 +39,4 @@ In a cloudformation template, on the ECS cluster:
 
 ## Optional environment variables:
 `DRY_RUN=true` - Causes the container to not actually run any changes, just print to stdout what it would do.
+`MAX_LOOPS=20` - Maximum number of intervals to run before exiting, to avoid a memory leak in the AWS SDK. Default is 20.
